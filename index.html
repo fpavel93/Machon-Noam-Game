@@ -1,0 +1,257 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div id='screen'>
+        <p id="countdown">4</p>
+        <p id="countdownText">seconds left!!!</p>
+        <button id="pauseBtn" onclick="onPauseBtn()">PAUSE</button>
+
+        <div id="basketball-bord" class="droppable">
+            <div id="basketball-bord-inside"></div>
+            <img src="basketball-net.png" id="net">
+        </div>
+
+        <img src="ball.png" id="ball">
+    </div>
+
+    <script>
+        var clr = null;
+        var lastFlashColor;
+        var ball = document.getElementById("ball");
+
+        function randBallCordinate() {
+            var w = window.innerWidth;
+            var h = window.innerHeight;
+
+            var minH = 200;
+            var maxH = h - 70;
+
+            var randomH;
+            if (minH > maxH) {
+                randomH = maxH;
+            } else {
+                randomH = Math.floor(Math.random() * (maxH - minH + 1)) + minH;
+            }
+
+            var minW = 10;
+            var maxW = w - 70;
+
+            var randomW;
+            if (minW > maxW) {
+                randomW = maxW;
+            } else {
+                randomW = Math.floor(Math.random() * (maxW - minW + 1)) + minW;
+            }
+
+            ball.style.left = randomW + 'px';
+            ball.style.top = randomH + 'px';
+        }
+
+        ball.style.position = 'static';
+        randBallCordinate();
+        ball.style.position = 'absolute';
+
+        let currentDroppable = null;
+        var mousedown = false;
+
+        function setballonmousedown() {
+
+            ball.onmousedown = function(event) {
+
+                mousedown = true;
+
+                let shiftX = event.clientX - ball.getBoundingClientRect().left;
+                let shiftY = event.clientY - ball.getBoundingClientRect().top;
+
+                ball.style.position = 'absolute';
+                document.body.append(ball);
+
+                moveAt(event.pageX, event.pageY);
+
+                function moveAt(pageX, pageY) {
+                    ball.style.left = pageX - shiftX + 'px';
+                    ball.style.top = pageY - shiftY + 'px';
+                }
+
+                function onMouseMove(event) {
+                    moveAt(event.pageX, event.pageY);
+
+                    ball.hidden = true;
+                    let elemBelow = document.elementFromPoint(event.clientX, event.clientY);
+                    ball.hidden = false;
+
+                    if (!elemBelow) return;
+
+                    let droppableBelow = elemBelow.closest('.droppable');
+                    if (currentDroppable != droppableBelow) {
+                        // not in use
+                        // if (currentDroppable) { // null when we were not over a droppable before this event
+                        //     leaveDroppable(currentDroppable);
+                        // }
+                        currentDroppable = droppableBelow;
+                        if (currentDroppable) { // null if we're not coming over a droppable now
+                            // (maybe just left the droppable)
+                            enterDroppable(currentDroppable);
+                        }
+                    }
+                }
+
+                document.addEventListener('mousemove', onMouseMove);
+
+                ball.onmouseup = function() {
+                    mousedown = false;
+                    document.removeEventListener('mousemove', onMouseMove);
+                    ball.onmouseup = null;
+                };
+            };
+        }
+
+        setballonmousedown();
+
+        var topMargin = -1;
+
+        function enterDroppable(elem) {
+            var bord = document.getElementById("basketball-bord");
+            if (elem == bord) {
+                clr = setInterval(flashGreen, 300);
+
+                bord.appendChild(ball);
+                ball.onmouseup();
+                ball.onmousedown = null;
+
+                var net = document.getElementById("net");
+                net.style.zIndex = "1";
+
+                ball.style.left = '57px';
+                topMargin = 30;
+                animationFunc();
+            }
+        }
+
+        var moveAnimation;
+
+        function animationFunc() {
+            ball.style.top = topMargin + 'px';
+            moveAnimation = setInterval(frame, 10);
+
+            function frame() {
+                if (topMargin == 150) {
+                    clearInterval(moveAnimation);
+                    topMargin = -1;
+                } else {
+                    topMargin = topMargin + 1;
+                    ball.style.top = topMargin + 'px';
+                }
+            }
+        }
+
+        function flashGreen() {
+            lastFlashColor = "green";
+            bord = document.getElementById("basketball-bord");
+            bord.style.background = (bord.style.background == 'green') ? 'white' : 'green';
+        }
+
+        function flashRed() {
+            lastFlashColor = "red";
+            bord = document.getElementById("basketball-bord");
+            bord.style.background = (bord.style.background == 'red') ? 'white' : 'red';
+        }
+
+        function leaveDroppable(elem) {
+            clearInterval(clr);
+            elem.style.background = 'white';
+            clr = null;
+        }
+
+        ball.ondragstart = function() {
+            return false;
+        };
+
+        var timeleft = 6;
+        var timer;
+        setTimer();
+
+        function setTimer() {
+            timer = setInterval(function() {
+                timeleft -= 1;
+                if (timeleft == 0) {
+                    var bord = document.getElementById("basketball-bord");
+                    leaveDroppable(bord);
+                    timeleft = 6;
+                    ball.style.position = 'absolute';
+                    ball.hidden = false;
+                    document.getElementById("countdown").innerHTML = timeleft - 2;
+                } else if (timeleft <= 2) {
+                    document.getElementById("countdown").innerHTML = "0";
+
+                    if (clr == null) {
+                        clr = setInterval(flashRed, 300);
+                    } else {
+                        setballonmousedown();
+                        ball.parentNode.removeChild(ball);
+                        var screen = document.getElementById('screen');
+                        screen.appendChild(ball);
+                    }
+
+                    ball.style.position = 'static';
+                    ball.hidden = true;
+                    if (mousedown == true) {
+                        ball.onmouseup();
+                    }
+
+                    randBallCordinate();
+
+                } else {
+                    document.getElementById("countdown").innerHTML = timeleft - 2;
+                }
+            }, 1000);
+        }
+
+        function onPauseBtn() {
+            var btn = document.getElementById("pauseBtn");
+            if (btn.innerHTML == "PAUSE") {
+
+                clearInterval(timer);
+                ball.onmousedown = null;
+                if (clr != null) {
+                    clearInterval(clr);
+                } else {
+                    lastFlashColor = "none";
+                }
+
+                if (topMargin != -1) {
+                    clearInterval(moveAnimation);
+                }
+
+                btn.innerHTML = "RESUME";
+            } else {
+
+                setTimer();
+                setballonmousedown();
+
+                if (lastFlashColor == "green") {
+                    clr = setInterval(flashGreen, 300);
+                } else if (lastFlashColor == "red") {
+                    clr = setInterval(flashRed, 300);
+                }
+
+                if (topMargin != -1) {
+                    animationFunc();
+                }
+
+                btn.innerHTML = "PAUSE";
+            }
+        }
+    </script>
+
+
+</body>
+
+</html>
